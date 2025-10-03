@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto Period and Result with History</title>
+<style>
+    body {
+        margin: 0; padding: 0;
+        display: flex; justify-content: center; align-items: center;
+        height: 100vh;
+        background: linear-gradient(to right, #1e3c72, #2a5298);
+        animation: backgroundAnimation 12s infinite alternate;
+        font-family: Arial, sans-serif;
+    }
+    @keyframes backgroundAnimation {
+        0% { background: linear-gradient(to right, #1e3c72, #2a5298); }
+        50% { background: linear-gradient(to right, #ff416c, #ff4b2b); }
+        100% { background: linear-gradient(to right, #1e3c72, #2a5298); }
+    }
+
+    .container { text-align: center; }
+
+    .black-box {
+        background-color: #000; padding: 25px 40px;
+        border-radius: 12px; text-align: center;
+        border: 5px solid red; box-shadow: 0 0 25px red;
+        animation: borderGlow 6s infinite;
+        transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+
+    @keyframes borderGlow {
+        0% { border-color: red; box-shadow: 0 0 25px red; }
+        33% { border-color: lime; box-shadow: 0 0 25px lime; }
+        66% { border-color: orange; box-shadow: 0 0 25px orange; }
+        100% { border-color: red; box-shadow: 0 0 25px red; }
+    }
+
+    .logo { width: 80px; margin-bottom: 20px; border-radius: 50%; border: 4px solid lime; }
+
+    .buttons { margin-top: 20px; }
+    .buttons button {
+        margin: 10px; padding: 12px 25px; border: none; border-radius: 6px;
+        cursor: pointer; font-weight: bold; color: white; font-size: 14px;
+        transition: transform 0.3s, opacity 0.3s;
+    }
+    .buttons button:hover { transform: scale(1.1); }
+    .predict-button { background-color: lime; }
+    .telegram-button { background-color: red; }
+
+    .period-result { color: white; font-weight: bold; margin: 20px 0; font-size: 16px; }
+    #auto-period { color: orange; transition: color 0.3s; }
+    #result { font-weight: bold; transition: color 0.3s; }
+
+    .history-box {
+        margin-top: 15px; max-height: 200px; overflow-y: auto;
+        background: #111; padding: 10px; border-radius: 8px;
+        border: 2px solid #333; color: white; font-size: 14px;
+        text-align: left;
+    }
+    .history-item { margin-bottom: 4px; }
+    .win { color: #00ff00; }
+    .loss { color: #ff4500; }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="black-box">
+        <img src="photos/logo.png" alt="Sanam" class="logo">
+        <div class="period-result">
+            <span id="auto-period">API: 20240917010481</span><br>
+            <span id="result">RESULT: SMALL</span>
+        </div>
+        <div class="buttons">
+            <button class="telegram-button" onclick="window.open('https://t.me/+wAghhI52xiE4NmZl','_blank')">TELEGRAM</button>
+            <button class="predict-button" id="predict-button">PREDICT</button>
+        </div>
+        <div class="history-box" id="history-box">
+            <strong>History (Win/Loss):</strong>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    let lastPeriod = '';
+    const predictBtn = document.getElementById('predict-button');
+    const autoPeriodEl = document.getElementById('auto-period');
+    const resultEl = document.getElementById('result');
+    const historyBox = document.getElementById('history-box');
+    const history = [];
+
+    predictBtn.addEventListener('click', function () {
+        const now = new Date();
+        const totalMinutes = now.getHours() * 60 + now.getMinutes() + 1;
+        const formattedMinutes = String(totalMinutes).padStart(4,'0');
+        const currentDate = now.toISOString().split('T')[0].replace(/-/g,'');
+        const autoPeriod = currentDate + '01' + formattedMinutes;
+
+        if(autoPeriod === lastPeriod){
+            alert('Wait for next period!');
+            return;
+        }
+        lastPeriod = autoPeriod;
+        autoPeriodEl.textContent = `API: ${autoPeriod}`;
+
+        const result = Math.random() < 0.5 ? 'SMALL(7.9)' : 'BIG(2.4)';
+        resultEl.textContent = `RESULT: ${result}`;
+        resultEl.style.color = result.startsWith('SMALL') ? '#00ff00' : '#ff4500';
+
+        // Determine Win/Loss: SMALL=Win, BIG=Loss
+        const outcome = result.startsWith('SMALL') ? 'Win' : 'Loss';
+        history.unshift(`${autoPeriod} → ${outcome} (${result})`); // Add to history
+        if(history.length > 10) history.pop(); // Keep last 10 items
+
+        // Render history
+        historyBox.innerHTML = '<strong>History (Win/Loss):</strong><br>';
+        history.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'history-item ' + (item.includes('Win') ? 'win' : 'loss');
+            div.textContent = item;
+            historyBox.appendChild(div);
+        });
+
+        // Disable button briefly
+        predictBtn.disabled = true;
+        predictBtn.style.opacity = 0.6;
+        setTimeout(() => { predictBtn.disabled = false; predictBtn.style.opacity = 1; }, 1500);
+    });
+});
+</script>
+</body>
+</html>
