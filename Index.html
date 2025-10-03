@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jalwa Wingo AI Prediction</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #061029;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+    .card {
+      background-color: #071935;
+      padding: 20px;
+      border-radius: 10px;
+      display: inline-block;
+      margin-top: 20px;
+    }
+    .result {
+      font-size: 2em;
+      margin: 10px 0;
+    }
+    .big { color: #06ff00; }
+    .small { color: #ff0606; }
+  </style>
+</head>
+<body>
+  <h1>Jalwa Wingo 1-Minute AI Prediction</h1>
+
+  <div class="card">
+    <h2>Last Results:</h2>
+    <div id="lastResults" class="result"></div>
+  </div>
+
+  <div class="card">
+    <h2>AI Prediction for Next:</h2>
+    <div id="prediction" class="result"></div>
+  </div>
+
+  <script>
+    // Simulated past results (Big / Small)
+    let results = ["Big", "Small", "Big", "Big", "Small", "Small"];
+
+    function updateLastResults() {
+      document.getElementById("lastResults").innerText = results.join(" | ");
+    }
+
+    function generatePrediction() {
+      // Simple AI logic: if last two are same, flip; else random
+      let last = results.slice(-2);
+      let prediction;
+      if (last[0] === last[1]) {
+        prediction = last[1] === "Big" ? "Small" : "Big";
+      } else {
+        prediction = Math.random() > 0.5 ? "Big" : "Small";
+      }
+      document.getElementById("prediction").innerText = prediction;
+      results.push(prediction); // update results
+      if (results.length > 10) results.shift(); // keep last 10 only
+      updateLastResults();
+    }
+
+    updateLastResults();
+    setInterval(generatePrediction, 60000); // Update every 1 minute
+  </script>
+</body>
+</html>
