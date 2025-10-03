@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>colour prediction</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.3; }
+            50% { opacity: 0.7; }
+            100% { opacity: 0.3; }
+        }
+        
+        @keyframes infiniteLoop {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        @keyframes glitch {
+            0% { text-shadow: 0.05em 0 0 #6e00ff, -0.05em -0.025em 0 #00a2ff; }
+            14% { text-shadow: 0.05em 0 0 #6e00ff, -0.05em -0.025em 0 #00a2ff; }
+            15% { text-shadow: -0.05em -0.025em 0 #6e00ff, 0.025em 0.025em 0 #00a2ff; }
+            49% { text-shadow: -0.05em -0.025em 0 #6e00ff, 0.025em 0.025em 0 #00a2ff; }
+            50% { text-shadow: 0.025em 0.05em 0 #6e00ff, 0.05em 0 0 #00a2ff; }
+            99% { text-shadow: 0.025em 0.05em 0 #6e00ff, 0.05em 0 0 #00a2ff; }
+            100% { text-shadow: -0.025em 0 0 #6e00ff, -0.025em -0.025em 0 #00a2ff; }
+        }
+        
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background: radial-gradient(circle at center, #0a0a2a 0%, #000000 100%);
+            margin: 0;
+            padding: 0;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                linear-gradient(135deg, rgba(90, 10, 130, 0.1) 0%, transparent 50%),
+                linear-gradient(45deg, rgba(200, 160, 0, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+            background-size: 3px 3px;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.3;
+        }
+        
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                transparent 0%,
+                rgba(0, 255, 255, 0.03) 50%,
+                transparent 100%
+            );
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            width: 300px;
+            height: 300px;
+        }
+        
+        .infinite-loop {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            animation: infiniteLoop 3s linear infinite;
+        }
+        
+        .loop-path {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 3px solid transparent;
+            border-top-color: #6e00ff;
+            border-right-color: #6e00ff;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(110, 0, 255, 0.5);
+        }
+        
+        .loop-path:nth-child(1) {
+            animation: infiniteLoop 3s linear infinite;
+        }
+        
+        .loop-path:nth-child(2) {
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            border-top-color: #00a2ff;
+            border-right-color: #00a2ff;
+            animation: infiniteLoop 2.5s linear infinite reverse;
+            box-shadow: 0 0 15px rgba(0, 162, 255, 0.5);
+        }
+        
+        .loop-path:nth-child(3) {
+            width: 60%;
+            height: 60%;
+            top: 20%;
+            left: 20%;
+            border-top-color: #c8a000;
+            border-right-color: #c8a000;
+            animation: infiniteLoop 2s linear infinite;
+            box-shadow: 0 0 15px rgba(200, 160, 0, 0.5);
+        }
+        
+        .loading-dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #ffffff;
+            border-radius: 50%;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 10px #ffffff;
+        }
+        
+        .loading-text {
+            margin-top: 40px;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #ffffff;
+            text-align: center;
+            animation: glitch 2s infinite, float 3s ease-in-out infinite;
+        }
+        
+        .loading-subtext {
+            margin-top: 15px;
+            font-size: 12px;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
+            font-family: 'Rajdhani', sans-serif;
+        }
+        
+        .progress-container {
+            width: 200px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            margin-top: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            position: absolute;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #6e00ff, #00a2ff);
+            animation: pulse 2s infinite alternate;
+        }
+        
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.4), 
+                transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        .corner-accent {
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .corner-accent.top-right {
+            top: -150px;
+            right: -150px;
+            background: radial-gradient(circle, rgba(200, 160, 0, 0.1) 0%, transparent 70%);
+        }
+        
+        .corner-accent.bottom-left {
+            bottom: -150px;
+            left: -150px;
+            background: radial-gradient(circle, rgba(110, 0, 255, 0.1) 0%, transparent 70%);
+        }
+        
+        .binary-code {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.05);
+            font-size: 12px;
+            font-family: monospace;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="scanline"></div>
+    <div class="corner-accent top-right"></div>
+    <div class="corner-accent bottom-left"></div>
+    
+    <!-- Random binary code elements in background -->
+    <div class="binary-code" style="top: 10%; left: 10%;">10101010</div>
+    <div class="binary-code" style="top: 20%; right: 15%;">11001100</div>
+    <div class="binary-code" style="bottom: 30%; left: 20%;">11110000</div>
+    <div class="binary-code" style="bottom: 15%; right: 25%;">00110011</div>
+    <div class="binary-code" style="top: 40%; left: 30%;">01010101</div>
+    
+    <div class="loading-container">
+        <div class="infinite-loop">
+            <div class="loop-path"></div>
+            <div class="loop-path"></div>
+            <div class="loop-path"></div>
+            <div class="loading-dot"></div>
+        </div>
+        
+        <div class="loading-text">SYSTEM INITIALIZING</div>
+        <div class="loading-subtext">Accessing prediction engines...</div>
+        
+        <div class="progress-container">
+            <div class="progress-bar"></div>
+        </div>
+    </div>
+
+    <script>
+        // Create more binary code elements dynamically
+        function createBinaryElements() {
+            const body = document.body;
+            for (let i = 0; i < 15; i++) {
+                const binary = document.createElement('div');
+                binary.className = 'binary-code';
+                binary.textContent = Math.random().toString(2).substring(2, 10);
+                binary.style.top = `${Math.random() * 90 + 5}%`;
+                binary.style.left = `${Math.random() * 90 + 5}%`;
+                binary.style.opacity = Math.random() * 0.1;
+                binary.style.fontSize = `${Math.random() * 6 + 8}px`;
+                body.appendChild(binary);
+            }
+        }
+        
+        createBinaryElements();
+        
+        // Make progress bar animate infinitely (never completes)
+        const progressBar = document.querySelector('.progress-bar');
+        let progress = 0;
+        
+        function animateProgress() {
+            progress += Math.random() * 5;
+            if (progress > 95) {
+                progress = 5;
+            }
+            progressBar.style.width = `${progress}%`;
+            setTimeout(animateProgress, 200 + Math.random() * 300);
+        }
+        
+        animateProgress();
+    </script>
+</body>
+</html>
