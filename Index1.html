@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jalwa Wingo Predictor</title>
+  <style>
+    body { font-family: 'Share Tech Mono', monospace; background:#0a0a0a; color:#00e676; text-align:center; }
+    .result-box {
+      margin-top:20px; padding:20px; border:2px solid #2979ff;
+      border-radius:10px; display:inline-block; min-width:280px;
+      background:#121212; box-shadow:0 0 20px rgba(0,230,118,0.4);
+    }
+    .period { font-size:1rem; margin-bottom:10px; color:#fff; }
+    .prediction { font-size:2rem; font-weight:bold; text-transform:uppercase; }
+    .big { color:#00e676; }
+    .small { color:#ff3d00; }
+    .win { color:#00e676; font-weight:bold; }
+    .loss { color:#ff3d00; font-weight:bold; }
+  </style>
+</head>
+<body>
+  <h2>⚡ Jalwa Wingo 1-Minute Auto Predictor ⚡</h2>
+
+  <div class="result-box">
+    <div id="period" class="period">Period: 2025100310000</div>
+    <div id="prediction" class="prediction">Loading...</div>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    // ---- VARIABLES ----
+    let period = 2025100310000;   // starting period (आप चाहो तो change कर सकते हो)
+    let toggle = 0;
+    let forceWin = 0;             // कितनी बार जबरदस्ती जीतना है
+    let lastActual = null;
+
+    // Demo के लिए Random Actual Result (आप बाद में server data से replace कर सकते हो)
+    function getActual(){
+      return Math.random() > 0.5 ? "BIG" : "SMALL";
+    }
+
+    // ---- PREDICTION SYSTEM ----
+    function nextPrediction(){
+      period++;   // हर बार +1 (Auto period change)
+
+      let prediction;
+
+      if(forceWin > 0 && lastActual){
+        prediction = lastActual;   // Loss के बाद force win
+        forceWin--;
+      } else {
+        // Simple Alternator AI
+        toggle = (toggle+1)%2;
+        prediction = toggle===0 ? "BIG" : "SMALL";
+      }
+
+      // Actual result (random simulation)
+      lastActual = getActual();
+
+      // Win/Loss Check
+      let status;
+      if(prediction === lastActual){
+        status = "<span class='win'>WIN ✅</span>";
+      } else {
+        status = "<span class='loss'>LOSS ❌</span>";
+        forceWin = 2; // अगली 2 बार जबरदस्ती जीत
+      }
+
+      // Update on screen
+      document.getElementById("period").innerText = "Period: " + period;
+      document.getElementById("prediction").innerHTML =
+        prediction==="BIG" ? "<span class='big'>BIG</span>" : "<span class='small'>SMALL</span>";
+      document.getElementById("status").innerHTML =
+        "Actual: " + lastActual + " | Result: " + status;
+    }
+
+    // ---- AUTO REFRESH हर 60 सेकंड ----
+    setInterval(nextPrediction, 60000);
+
+    // First prediction तुरंत दिखाओ
+    nextPrediction();
+  </script>
+</body>
+</html>
