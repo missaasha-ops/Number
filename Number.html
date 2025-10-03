@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Big-Small Predictor</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background: #f8f9fa; }
+    h2 { color: #ff5722; }
+    input { padding: 5px; margin: 5px; }
+    button { padding: 8px 15px; background: #4caf50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #388e3c; }
+    .result { margin-top: 20px; font-size: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h2>Big / Small Predictor</h2>
+  <p>पिछले 5 नंबर डालो (0-9)</p>
+
+  <input type="number" id="n1" min="0" max="9">
+  <input type="number" id="n2" min="0" max="9">
+  <input type="number" id="n3" min="0" max="9">
+  <input type="number" id="n4" min="0" max="9">
+  <input type="number" id="n5" min="0" max="9">
+  <br><br>
+  <button onclick="predict()">Predict Next</button>
+
+  <div class="result" id="output"></div>
+
+  <script>
+    function predict() {
+      let nums = [];
+      for (let i = 1; i <= 5; i++) {
+        let val = parseInt(document.getElementById("n"+i).value);
+        if (!isNaN(val)) nums.push(val);
+      }
+
+      if (nums.length < 5) {
+        document.getElementById("output").innerText = "❌ कृपया 5 नंबर डालो!";
+        return;
+      }
+
+      // Count Big (5-9) and Small (0-4)
+      let big = nums.filter(x => x >= 5).length;
+      let small = nums.filter(x => x <= 4).length;
+
+      let prediction = "";
+      if (big > small) {
+        prediction = "👉 Next Guess: Small आने का ज्यादा chance";
+      } else if (small > big) {
+        prediction = "👉 Next Guess: Big आने का ज्यादा chance";
+      } else {
+        prediction = "⚖️ बराबर trend है, कोई भी आ सकता है!";
+      }
+
+      document.getElementById("output").innerText = prediction;
+    }
+  </script>
+
+</body>
+</html>
