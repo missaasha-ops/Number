@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Jalwa Auto Predictor — 1 min</title>
+  <style>
+    :root{
+      --bg:#061029; --card:#071935; --muted:#9fb3ff; --accent:#06a0ff; --text:#e6eef8;
+    }
+    body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#041026,#07112a);color:var(--text);padding:14px;}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    h1{font-size:18px;margin:0}
+    .layout{display:grid;grid-template-columns:360px 1fr;gap:12px}
+    @media(max-width:840px){ .layout{grid-template-columns:1fr} }
+    .card{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+    textarea{width:100%;height:140px;background:#041428;border:1px solid rgba(255,255,255,0.03);color:var(--text);padding:8px;border-radius:8px;resize:vertical}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+    button{background:var(--accent);border:none;padding:10px 12px;border-radius:8px;color:#fff;font-weight:700;cursor:pointer}
+    .muted{color:var(--muted);font-size:13px}
+    .smallbtn{background:#0b2540;border:none;border-radius:8px;padding:8px 10px;color:var(--muted);cursor:pointer}
+    table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+    thead th{background:#122a4a;padding:10px;color:#fff;text-align:left;border-radius:6px}
+    tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.03)}
+    .num{font-weight:800;font-size:18px}
+    .num.green{color:#22c55e}
+    .num.red{color:#fb7185}
+    .badge{padding:6px 10px;border-radius:999px;font-weight:800;display:inline-block}
+    .big{background:#063b1f;color:#c7f0d5}
+    .small{background:#2b1f00;color:#ffeaa3}
+    .dot{width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:6px;border:2px solid rgba(255,255,255,0.06)}
+    .predBox{margin-top:10px;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03)}
+    .status{font-size:13px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Jalwa Wingo — Auto 1min Predictor</h1>
+    <div class="status">Big = 5-9 · Small = 0-4</div>
+  </header>
+
+  <div class="layout">
+    <div class="card">
+      <label class="muted">Input mode</label>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="smallbtn" id="modeSimple">Simple</button>
+        <button class="smallbtn" id="modeTable">Table</button>
+      </div>
+
+      <label class="muted">Paste history</label>
+      <textarea id="historyInput" placeholder='Simple example: 5,1,4,0,9,5,4,7,1,1
+Table example:
+20251003100010183,5,green|pink
+20251003100010182,1,green'></textarea>
+
+      <div class="controls">
+        <button id="predictBtn">Predict Next</button>
+        <button id="startAuto">Start Auto (1 min)</button>
+        <button id="stopAuto" style="display:none;background:#f43f5e">Stop Auto</button>
+        <button id="clearBtn" style="background:#223a5a">Clear</button>
+        <div style="margin-left:auto" class="muted">Auto will append predicted periods every 60s</div>
+      </div>
+
+      <div id="quickOut" class="predBox" style="display:none"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:800">Game history (latest top)</div>
+        <div class="muted" id="autoStatus">Auto: stopped</div>
+      </div>
+
+      <div style="max-height:560px;overflow:auto;margin-top:10px">
+        <table>
+          <thead><tr><th style="width:45%">Period</th><th style="width:15%">Number</th><th style="width:20%">Big/Small</th><th style="width:20%">Color</th></tr></thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+
+      <div id="predPanel" class="predBox" style="display:none">
+        <div style="font-size:16px;font-weight:800">Next Prediction (for upcoming period)</div>
+        <div style="display:flex;gap:12px;margin-top:10px;align-items:center">
+          <div style="min-width:120px;padding:8px;border-radius:10px;background:rgba(255,255,255,0.02);text-align:center">
+            <div id="predNum" style="font-size:28px;font-weight:900">-</div>
+            <div class="muted">Number</div>
+          </div>
+          <div style="min-width:140px;padding:8px;border-radius:10px;background:rgba(255,255,255,0.02);text-align:center">
+            <div id="predBS" style="font-size:16px;font-weight:900">-</div>
+            <div class="muted">Big / Small</div>
+          </div>
+          <div style="padding:8px;border-radius:10px;background:rgba(255,255,255,0.02);min-width:160px">
+            <div style="font-weight:800">Color (top)</div>
+            <div id="predColor" style="margin-top:8px" class="muted">-</div>
+          </div>
+        </div>
+        <div style="margin-top:8px" class="muted" id="predDetails"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- state
+    let mode = 'simple'; // or 'table'
+    let autoTimer = null;
+    let predictedPeriods = 0;
+
+    // elements
+    const modeSimple = document.getElementById('modeSimple');
+    const modeTable = document.getElementById('modeTable');
+    const historyInput = document.getElementById('historyInput');
+    const histBody = document.getElementById('histBody');
+    const predictBtn = document.getElementById('predictBtn');
+    const quickOut = document.getElementById('quickOut');
+    const predPanel = document.getElementById('predPanel');
+    const predNum = document.getElementById('predNum');
+    const predBS = document.getElementById('predBS');
+    const predColor = document.getElementById('predColor');
+    const predDetails = document.getElementById('predDetails');
+    const startAuto = document.getElementById('startAuto');
+    const stopAuto = document.getElementById('stopAuto');
+    const autoStatus = document.getElementById('autoStatus');
+    const clearBtn = document.getElementById('clearBtn');
+
+    // init mode buttons
+    function setMode(m){
+      mode = m;
+      if(m==='simple'){ modeSimple.style.background='#063b1f'; modeSimple.style.color='#fff'; modeTable.style.background=''; modeTable.style.color=''; }
+      else { modeTable.style.background='#063b1f'; modeTable.style.color='#fff'; modeSimple.style.background=''; modeSimple.style.color=''; }
+    }
+    modeSimple.addEventListener('click', ()=>setMode('simple'));
+    modeTable.addEventListener('click', ()=>setMode('table'));
+    setMode('simple');
+
+    // parse input into rows
+    function parseHistory(text){
+      const lines = text.split(/\n+/).map(l=>l.trim()).filter(Boolean);
+      const rows = [];
+      if(mode==='simple'){
+        // join lines, split by comma/space
+        const joined = lines.join(' ');
+        const parts = joined.split(/[,\s]+/).map(s=>s.trim()).filter(Boolean);
+        parts.forEach((p,idx)=>{
+          const n = parseInt(p,10);
+          if(!isNaN(n) && n>=0 && n<=9){
+            rows.push({period: `p${idx+1}`, number: n, colors: []});
+          }
+        });
+      } else {
+        // table lines: period,number,color1|color2
+        lines.forEach((ln,idx)=>{
+          const parts = ln.split(',');
+          if(parts.length >= 2){
+            const period = parts[0].trim();
+            const n = parseInt(parts[1].trim(),10);
+            const colors = (parts[2] || '').split('|').map(s=>s.trim()).filter(Boolean);
+            if(!isNaN(n) && n>=0 && n<=9){
+              rows.push({period: period || `p${idx+1}`, number: n, colors});
+            }
+          }
+        });
+      }
+      return rows;
+    }
+
+    function renderRows(rows){
+      histBody.innerHTML = '';
+      // show latest first
+      const rev = rows.slice().reverse();
+      rev.forEach(r=>{
+        const tr = document.createElement('tr');
+        const tdP = document.createElement('td'); tdP.textContent = r.period;
+        const tdN = document.createElement('td'); tdN.innerHTML = `<span class="num ${numClass(r.number)}">${r.number}</span>`;
+        const tdBS = document.createElement('td'); tdBS.innerHTML = r.number>=5 ? '<span class="badge big">Big</span>' : '<span class="badge small">Small</span>';
+        const tdC = document.createElement('td');
+        if(r.colors && r.colors.length){
+          r.colors.forEach(c=>{
+            const sp = document.createElement('span');
+            sp.className = 'dot';
+            sp.style.background = colorToCss(c);
+            tdC.appendChild(sp);
+          });
+        } else {
+          tdC.innerHTML = '<span class="muted">—</span>';
+        }
+        tr.appendChild(tdP); tr.appendChild(tdN); tr.appendChild(tdBS); tr.appendChild(tdC);
+        histBody.appendChild(tr);
+      });
+    }
+
+    function numClass(n){
+      if([1,7,9].includes(n)) return 'green';
+      if([4,0].includes(n)) return 'red';
+      if([5].includes(n)) return 'green';
+      return '';
+    }
+    function colorToCss(name){
+      if(!name) return 'transparent';
+      const n = name.trim().toLowerCase();
+      if(n==='green' || n==='g') return '#22c55e';
+      if(n==='red' || n==='r') return '#fb7185';
+      if(n==='pink' || n==='magenta') return '#ff7ad9';
+      if(n==='purple') return '#c084fc';
+      if(n==='blue' || n==='b') return '#60a5fa';
+      if(n==='orange' || n==='o') return '#fb923c';
+      if(n==='yellow' || n==='y') return '#facc15';
+      if(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(n)) return n;
+      // fallback color
+      return '#94a3b8';
+    }
+
+    // prediction logic
+    function predict(rows){
+      if(rows.length===0) return null;
+      const counts = Array(10).fill(0);
+      rows.forEach(r => counts[r.number]++);
+      const total = rows.length;
+      const probs = counts.map(c => c/total);
+      // top number
+      let max = Math.max(...probs);
+      let cand = [];
+      probs.forEach((p,i)=>{ if(p===max) cand.push(i) });
+      // tie-break: pick most recent among ties
+      let predicted = cand[0];
+      for(const c of cand){
+        const idxC = rows.map(r=>r.number).lastIndexOf(c);
+        const idxP = rows.map(r=>r.number).lastIndexOf(predicted);
+        if(idxC > idxP) predicted = c;
+      }
+      // color prediction
+      const colorCounts = {};
+      rows.forEach(r=>{
+        if(r.colors && r.colors.length){
+          r.colors.forEach(c=>{
+            const k = c.trim().toLowerCase();
+            if(!k) return;
+            colorCounts[k] = (colorCounts[k]||0) + 1;
+          });
+        }
+      });
+      const colorsSorted = Object.keys(colorCounts).sort((a,b)=>colorCounts[b]-colorCounts[a]);
+      const bs = predicted >=5 ? 'Big' : 'Small';
+      return {predicted, bs, colorsSorted, probs};
+    }
+
+    // helper to create a period id for next period (timestamp-based)
+    function nextPeriodId(){
+      // Use current ISO minute as id (e.g., 20251003T083425 -> use minute resolution)
+      const d = new Date();
+      // we want the upcoming minute id (future period), so add 1 minute when called for next
+      d.setSeconds(0,0);
+      const pad = n => String(n).padStart(2,'0');
+      const id = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
+      return id;
+    }
+
+    // UI actions
+    predictBtn.addEventListener('click', ()=>{
+      const rows = parseHistory(historyInput.value);
+      if(rows.length===0){
+        quickOut.style.display='block';
+        quickOut.innerHTML = '<span style="color:#ffd2d2">कृपया history डालें</span>';
+        predPanel.style.display='none';
+        histBody.innerHTML = '';
+        return;
+      }
+      quickOut.style.display='none';
+      renderRows(rows);
+      const p = predict(rows);
+      if(!p) return;
+      showPredictionPanel(p);
+    });
+
+    function showPredictionPanel(p){
+      predPanel.style.display='block';
+      predNum.textContent = p.predicted;
+      predNum.className = p.predicted!==null ? 'num ' + numClass(p.predicted) : 'num';
+      predBS.textContent = p.bs;
+      predColor.innerHTML = p.colorsSorted.length ? `<span class="dot" style="background:${colorToCss(p.colorsSorted[0])}"></span> ${p.colorsSorted[0]}` : '—';
+      predDetails.textContent = `Based on ${parseHistory(historyInput.value).length} rows. Top number: ${p.predicted}`;
+    }
+
+    // Auto controls
+    startAuto.addEventListener('click', ()=>{
+      if(autoTimer) return;
+      // immediate predict+append, then schedule every 60s
+      runAutoStep();
+      autoTimer = setInterval(runAutoStep, 60*1000); // 60 seconds
+      startAuto.style.display='none';
+      stopAuto.style.display='inline-block';
+      autoStatus.textContent = 'Auto: running (1 min)';
+    });
+
+    stopAuto.addEventListener('click', ()=>{
+      if(autoTimer) clearInterval(autoTimer);
+      autoTimer = null;
+      startAuto.style.display='inline-block';
+      stopAuto.style.display='none';
+      autoStatus.textContent = 'Auto: stopped';
+    });
+
+    clearBtn.addEventListener('click', ()=>{
+      historyInput.value = '';
+      histBody.innerHTML = '';
+      predPanel.style.display='none';
+      quickOut.style.display='none';
+    });
+
+    function runAutoStep(){
+      // read existing rows
+      const rows = parseHistory(historyInput.value);
+      // compute prediction
+      const p = predict(rows);
+      if(!p) return;
+      // create a new period entry (predicted)
+      const id = nextPeriodId() + 'P' + (predictedPeriods+1);
+      const newRow = { period: id, number: p.predicted, colors: p.colorsSorted.slice(0,2) };
+      // append to historyInput for future steps (so next prediction uses appended predicted numbers)
+      // We append as "table" style row if currently table mode, else as simple number
+      if(mode === 'table'){
+        // append line: period,number,colors
+        const colorPart = newRow.colors.length ? ',' + newRow.colors.join('|') : '';
+        historyInput.value = (historyInput.value.trim() ? historyInput.value.trim() + '\n' : '') + `${newRow.period},${newRow.number}${colorPart}`;
+      } else {
+        // simple: just append number
+        historyInput.value = (historyInput.value.trim() ? historyInput.value.trim() + ',' : '') + `${newRow.number}`;
+      }
+      predictedPeriods++;
+      // re-render
+      const updatedRows = parseHistory(historyInput.value);
+      renderRows(updatedRows);
+      // show prediction (for upcoming next period)
+      const nextPred = predict(updatedRows);
+      if(nextPred) showPredictionPanel(nextPred);
+    }
+
+    // init example
+    historyInput.value = [
+      '20251003100010183,5,green|pink',
+      '20251003100010182,1,green',
+      '20251003100010181,4,red',
+      '20251003100010180,0,red|pink',
+      '20251003100010179,9,green',
+      '20251003100010178,5,green|pink',
+      '20251003100010177,4,red',
+      '20251003100010176,7,green',
+      '20251003100010175,1,green',
+      '20251003100010174,1,green'
+    ].join('\n');
+    // initial predict render
+    predictBtn.click();
+
+    // Clean up when leaving page
+    window.addEventListener('beforeunload', ()=>{
+      if(autoTimer) clearInterval(autoTimer);
+    });
+  </script>
+</body>
+</html>
