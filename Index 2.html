@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYSTEM ACCESS - LOADING</title>
+    <style>
+        :root {
+            --primary: #00e676;
+            --secondary: #2979ff;
+            --accent: #ff3d00;
+            --dark: #121212;
+            --darker: #0a0a0a;
+            --light: #e0e0e0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: var(--dark);
+            color: var(--light);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Matrix Background */
+        .matrix-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.05;
+            pointer-events: none;
+        }
+
+        .binary-code {
+            position: absolute;
+            color: var(--primary);
+            font-size: 14px;
+            opacity: 0;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall { to { transform: translateY(100vh); } }
+
+        /* Scanlines */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0,0,0,0.03),
+                rgba(0,0,0,0.03) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* Loading Container */
+        .loading-container {
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+        }
+
+        .terminal-text {
+            color: var(--primary);
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            text-shadow: 0 0 5px var(--primary);
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        /* Cyber Loader */
+        .cyber-loader {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 30px;
+        }
+
+        .cyber-circle, .cyber-circle-inner, .cyber-core, .cyber-dots, .cyber-dot, .cyber-orbit { /* existing CSS */ }
+
+        /* Progress Bar */
+        .progress-container {
+            width: 100%; height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px; overflow: hidden;
+            margin: 20px auto;
+        }
+        .progress-bar {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease-in-out;
+        }
+
+        .status-text { color: var(--light); font-size: 0.9rem; margin-top: 20px; opacity: 0.8; }
+
+        /* Prediction Box */
+        .prediction-box {
+            margin-top: 25px;
+            padding: 15px;
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            background: rgba(0, 230, 118, 0.05);
+            text-align: center;
+            box-shadow: 0 0 10px rgba(0,230,118,0.2);
+        }
+        .prediction-title {
+            font-size: 0.9rem;
+            color: var(--secondary);
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+        .prediction-result {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: var(--accent);
+            text-shadow: 0 0 8px var(--accent);
+        }
+
+        /* History Panel */
+        .history-box {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid var(--secondary);
+            border-radius: 8px;
+            background: rgba(41, 121, 255, 0.05);
+            text-align: left;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        .history-title {
+            font-size: 0.9rem;
+            color: var(--secondary);
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .history-list {
+            list-style: none;
+            font-size: 0.85rem;
+        }
+        .history-list li {
+            margin-bottom: 6px;
+            padding: 6px;
+            border-bottom: 1px dashed rgba(255,255,255,0.1);
+        }
+        .win { color: #00e676; font-weight: bold; }
+        .loss { color: #ff3d00; font-weight: bold; }
+
+        /* Data Stream */
+        .data-stream { position: absolute; bottom: 20px; left: 0; width: 100%; text-align: center; color: var(--primary); font-size: 0.8rem; opacity: 0.7; }
+        .data-item { display: inline-block; margin: 0 5px; animation: dataFlow 6s infinite linear; opacity: 0; }
+        .data-item:nth-child(1){ animation-delay:0s; }
+        .data-item:nth-child(2){ animation-delay:1s; }
+        .data-item:nth-child(3){ animation-delay:2s; }
+        .data-item:nth-child(4){ animation-delay:3s; }
+        .data-item:nth-child(5){ animation-delay:4s; }
+        .data-item:nth-child(6){ animation-delay:5s; }
+
+        @keyframes dataFlow { 0% { opacity:0; transform:translateY(20px); } 10%,90% { opacity:1; transform:translateY(0); } 100% { opacity:0; transform:translateY(-20px); } }
+
+    </style>
+</head>
+<body>
+    <div class="matrix-effect" id="matrixEffect"></div>
+    <div class="scanlines"></div>
+
+    <div class="loading-container">
+        <div class="cyber-loader">
+            <div class="cyber-orbits">
+                <div class="cyber-orbit"></div>
+                <div class="cyber-orbit"></div>
+                <div class="cyber-orbit"></div>
+            </div>
+            <div class="cyber-circle"></div>
+            <div class="cyber-circle-inner"></div>
+            <div class="cyber-dots">
+                <div class="cyber-dot"></div>
+                <div class="cyber-dot"></div>
+                <div class="cyber-dot"></div>
+                <div class="cyber-dot"></div>
+            </div>
+            <div class="cyber-core"></div>
+        </div>
+
+        <div class="terminal-text">>_ </div>
+        
+        <div class="progress-container">
+            <div class="progress-bar"></div>
+        </div>
+        
+        <div class="status-text">LOADING PREDICTION MODULES...</div>
+
+        <!-- Prediction Box -->
+        <div class="prediction-box">
+            <div class="prediction-title">NEXT PREDICTION</div>
+            <div class="prediction-result" id="predictionResult">--</div>
+        </div>
+
+        <!-- History Panel -->
+        <div class="history-box">
+            <div class="history-title">RESULT HISTORY</div>
+            <ul class="history-list" id="historyList"></ul>
+        </div>
+    </div>
+
+    <div class="data-stream">
+        <div class="data-item">> DECRYPTING_KEYS</div>
+        <div class="data-item">> ANALYZING_PATTERNS</div>
+        <div class="data-item">> GENERATING_PREDICTIONS</div>
+        <div class="data-item">> OPTIMIZING_ALGORITHMS</div>
+        <div class="data-item">> CALIBRATING_SYSTEM</div>
+        <div class="data-item">> SYNCING_WITH_SERVER</div>
+    </div>
+
+    <script>
+        // Matrix effect
+        function createMatrixEffect() {
+            const chars = "01";
+            const container = document.getElementById('matrixEffect');
+            for (let i = 0; i < 50; i++) {
+                const binaryCode = document.createElement('div');
+                binaryCode.classList.add('binary-code');
+                binaryCode.textContent = Array(20).fill(0).map(() => chars[Math.floor(Math.random()*chars.length)]).join(' ');
+                binaryCode.style.left = `${Math.random()*100}%`;
+                binaryCode.style.animationDuration = `${5+Math.random()*10}s`;
+                binaryCode.style.animationDelay = `${Math.random()*5}s`;
+                container.appendChild(binaryCode);
+            }
+        }
+
+        // Status messages
+        function updateStatusText() {
+            const statusText = document.querySelector('.status-text');
+            const messages = [
+                "LOADING PREDICTION MODULES...",
+                "SYNCING WITH SERVER...",
+                "ANALYZING GAME PATTERNS...",
+                "GENERATING PREDICTIONS...",
+                "OPTIMIZING ALGORITHMS...",
+                "CALIBRATING ACCURACY METRICS..."
+            ];
+            let index = 0;
+            setInterval(() => {
+                statusText.style.opacity = 0;
+                setTimeout(() => {
+                    statusText.textContent = messages[index];
+                    statusText.style.opacity = 0.8;
+                    index = (index + 1) % messages.length;
+                }, 500);
+            }, 3000);
+        }
+
+        // Progress bar
+        function startProgressBar() {
+            const bar = document.querySelector('.progress-bar');
+            let width = 0;
+            const interval = setInterval(() => {
+                width += Math.random() * 8;
+                if (width >= 100) {
+                    width = 100;
+                    clearInterval(interval);
+                }
+                bar.style.width = width + "%";
+            }, 400);
+        }
+
+        // Typewriter effect
+        function typeWriter(text, element, speed=80) {
+            let i = 0;
+            function typing() {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                    setTimeout(typing, speed);
+                }
+            }
+            typing();
+        }
+
+        // Prediction + History
+        function startPrediction() {
+            const resultEl = document.getElementById('predictionResult');
+            const historyEl = document.getElementById('historyList');
+            let nextNumber = 1;
+
+            function getPrediction(num) {
+                let size = "";
+                if (num >= 1 && num <= 4) size = "SMALL";
+                else if (num >= 6 && num <= 9) size = "BIG";
+                else size = "SPECIAL";
+
+                let color = "";
+                if ([1,4,7].includes(num)) color = "RED";
+                else if ([2,5,8].includes(num)) color = "GREEN";
+                else if ([3,6,9].includes(num)) color = "VIOLET";
+
+                return { num, size, color };
+            }
+
+            setInterval(() => {
+                const predicted = getPrediction(nextNumber);
+
+                // Simulate actual result
+                const actualNum = Math.floor(Math.random() * 9) + 1;
+                const actual = getPrediction(actualNum);
+
+                // Outcome
+                let outcome = (predicted.num === actual.num) ? "WIN" : "LOSS";
+
+                // Show latest prediction
+                resultEl.innerHTML = `${predicted.size} - ${predicted.num} <br>
+                    <span style="color:${predicted.color.toLowerCase()};">${predicted.color}</span>`;
+
+                // Add to history (latest on top)
+                const li = document.createElement("li");
+                li.innerHTML = `<strong>Predicted:</strong> ${predicted.size}-${predicted.num} (${predicted.color}) 
+                                | <strong>Actual:</strong> ${actual.size}-${actual.num} (${actual.color}) 
+                                → <span class="${outcome.toLowerCase()}">${outcome}</span>`;
+                historyEl.prepend(li);
+
+                // Keep only last 10 results
+                if (historyEl.children.length > 10) {
+                    historyEl.removeChild(historyEl.lastChild);
+                }
+
+                // Loop numbers
+                nextNumber++;
+                if (nextNumber > 9) nextNumber = 1;
+            }, 2500);
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            createMatrixEffect();
+            updateStatusText();
+            startProgressBar();
+            const terminal = document.querySelector('.terminal-text');
+            terminal.textContent = ">_ ";
+            typeWriter("INITIALIZING SYSTEM_ACCESS", terminal, 70);
+            startPrediction();
+
+            // Redirect after 10 sec
+            setTimeout(() => {
+                window.location.href = "prediction.html"; 
+            }, 10000);
+        });
+    </script>
+</body>
+</html>
