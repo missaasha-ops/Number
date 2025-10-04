@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Advanced Prediction Tool</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #121212;
+      color: #eee;
+      text-align: center;
+      padding: 30px;
+      max-width: 900px;
+      margin: auto;
+    }
+    h1 {
+      color: #00bfa5;
+      margin-bottom: 20px;
+    }
+    #period1m, #textview5, #prediction {
+      font-size: 22px;
+      margin: 12px 0;
+    }
+    #prediction span {
+      font-weight: 900;
+      padding: 12px 40px;
+      border-radius: 25px;
+      font-size: 36px;
+      display: inline-block;
+      min-width: 150px;
+      transition: background-color 0.4s ease, color 0.4s ease;
+      user-select: none;
+    }
+    .big {
+      background-color: #00bfa5;
+      color: #121212;
+      box-shadow: 0 0 15px #00bfa5aa;
+      animation: pulseBig 2s infinite;
+    }
+    .small {
+      background-color: #ff5252;
+      color: #121212;
+      box-shadow: 0 0 15px #ff5252aa;
+      animation: pulseSmall 2s infinite;
+    }
+    @keyframes pulseBig {
+      0%, 100% { box-shadow: 0 0 15px #00bfa5aa; }
+      50% { box-shadow: 0 0 25px #00bfa5cc; }
+    }
+    @keyframes pulseSmall {
+      0%, 100% { box-shadow: 0 0 15px #ff5252aa; }
+      50% { box-shadow: 0 0 25px #ff5252cc; }
+    }
+    table {
+      width: 100%;
+      margin-top: 30px;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #444;
+      padding: 10px;
+      font-size: 14px;
+      text-align: center;
+    }
+    th {
+      background-color: #1f1f1f;
+    }
+  </style>
+</head>
+<body>
+  <h1>Enhanced Prediction Tool</h1>
+  <div id="period1m">Period: --</div>
+  <div id="textview5">Time: -- seconds</div>
+  <div id="prediction">Prediction: <span id="predText" class="">Calculating...</span></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Period</th>
+        <th>Two Numbers</th>
+        <th>Prediction</th>
+        <th>Color</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody id="historyTable"></tbody>
+  </table>
+
+<script>
+  const history = [];
+  let lastPeriod = null;
+  let forceWinCount = 0;
+
+  function generatePeriod() {
+    const now = new Date();
+    const totalMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+    return now.getUTCFullYear() * 100000 + 10001 + totalMinutes;
+  }
+
+  function sumDigits(num) {
+    return num.toString().split('').reduce((a, b) => a + parseInt(b), 0);
+  }
+  function countEvenDigits(num) {
+    return num.toString().split('').filter(d => parseInt(d) % 2 === 0).length;
+  }
+  function countOddDigits(num) {
+    return num.toString().split('').filter(d => parseInt(d) % 2 !== 0).length;
+  }
+  function digitDifference(num) {
+    const digits = num.toString().split('').map(Number);
+    return Math.max(...digits) - Math.min(...digits);
+  }
+  function isPrime(n) {
+    if (n <= 1) return false;
+    if (n <= 3) return true;
+    if (n % 2 === 0 || n % 3 === 0) return false;
+    for (let i = 5; i * i <= n; i += 6) {
+      if (n % i === 0 || n % (i + 2) === 0) return false;
+    }
+    return true;
+  }
+  function primeDigitCount(num) {
+    return num.toString().split('').filter(d => isPrime(parseInt(d))).length;
+  }
+  function digitPatternAnalysis(num) {
+    return new Set(num.toString().split('')).size;
+  }
+  function reversedDigitSum(num) {
+    return sumDigits(parseInt(num.toString().split('').reverse().join('')));
+  }
+  function multiplyDigits(num) {
+    return num.toString().split('').reduce((a, b) => a * parseInt(b), 1);
+  }
+  function alternateSum(num) {
+    const digits = num.toString().split('').map(Number);
+    return digits.reduce((acc, digit, idx) => acc + (idx % 2 === 0 ? digit : -digit), 0);
+  }
+  function evenOddBalance(num) {
+    return Math.abs(countEvenDigits(num) - countOddDigits(num));
+  }
+  function uniqueEvenOddRatio(num) {
+    const digits = num.toString().split('').map(Number);
+    const even = digits.filter(n => n % 2 === 0);
+    const odd = digits.filter(n => n % 2 !== 0);
+    return even.length && odd.length ? even.length / odd.length : 0;
+  }
+
+  function newCalculationLogic(period) {
+    const logicResults = [
+      sumDigits(period),
+      countEvenDigits(period),
+      countOddDigits(period),
+      digitDifference(period),
+      primeDigitCount(period),
+      digitPatternAnalysis(period),
+      reversedDigitSum(period),
+      multiplyDigits(period),
+      alternateSum(period),
+      evenOddBalance(period),
+      Math.floor(period / 100000) % 10,
+      Math.floor(period / 10000) % 10,
+      Math.floor(period / 1000) % 10,
+      Math.floor(period / 100) % 10,
+      Math.floor(period / 10) % 10,
+      period % 10,
+      (sumDigits(period) + reversedDigitSum(period)) % 10,
+      (multiplyDigits(period) % 10),
+      (primeDigitCount(period) * 3) % 10,
+      (countEvenDigits(period) + countOddDigits(period)) % 2,
+      Math.round(uniqueEvenOddRatio(period) * 10),
+      (digitPatternAnalysis(period) * 7) % 13,
+      (alternateSum(period) + 100) % 17,
+      (period % 7 + period % 3 + period % 4),
+      (sumDigits(period) * primeDigitCount(period)) % 21
+    ];
+    return logicResults.reduce((a, b) => a + b, 0);
+  }
+
+  function newPredictionMethod(value) {
+    if (forceWinCount > 0) {
+      forceWinCount--;
+      return "BIG"; // LOSS ke baad अगली 2 बार WIN force
+    }
+    return value % 2 === 0 ? "BIG" : "SMALL";
+  }
+
+  function generateTwoNumbers(prediction) {
+    const pool = prediction === "SMALL" ? [0,1,2,3,4] : [5,6,7,8,9];
+    const shuffled = pool.sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 2).join(', ');
+  }
+
+  function getColor(period, prediction) {
+    if (period % 7 === 0) return "VIOLET";
+    return prediction === "BIG" ? "GREEN" : "RED";
+  }
+
+  function updateDisplay(period, prediction) {
+    document.getElementById('period1m').textContent = `Period: ${period}`;
+    const predText = document.getElementById('predText');
+    predText.textContent = prediction;
+    predText.className = prediction.toLowerCase();
+  }
+
+  function updateHistory(period, prediction) {
+    const numbers = generateTwoNumbers(prediction);
+    const color = getColor(period, prediction);
+
+    let result = "PENDING";
+    if (history.length > 0) {
+      const last = history[0];
+      result = (last.prediction === prediction) ? "WIN" : "LOSS";
+      if (result === "LOSS") {
+        forceWinCount = 2;
+      }
+    }
+
+    history.unshift({ period, prediction, numbers, result, color });
+    if (history.length > 10) history.pop();
+
+    const table = document.getElementById('historyTable');
+    table.innerHTML = '';
+    history.forEach((entry, index) => {
+      table.innerHTML += `<tr>
+        <td>${index + 1}</td>
+        <td>${entry.period}</td>
+        <td>${entry.numbers}</td>
+        <td style="color:${entry.prediction === 'BIG' ? '#00bfa5' : '#ff5252'}">${entry.prediction}</td>
+        <td style="color:${entry.color === 'GREEN' ? '#00ff00' : entry.color === 'RED' ? '#ff3333' : '#bb33ff'}">${entry.color}</td>
+        <td style="color:${entry.result === 'WIN' ? '#00ff00' : (entry.result === 'LOSS' ? '#ff5252' : '#cccccc')}">${entry.result}</td>
+      </tr>`;
+    });
+  }
+
+  function mainLoop() {
+    const now = new Date();
+    const seconds = now.getUTCSeconds();
+    const remain = 60 - seconds;
+    document.getElementById('textview5').textContent = `Time: ${remain} seconds`;
+
+    const currentPeriod = generatePeriod();
+    if (currentPeriod !== lastPeriod) {
+      lastPeriod = currentPeriod;
+      const value = newCalculationLogic(currentPeriod);
+      const prediction = newPredictionMethod(value);
+      updateDisplay(currentPeriod, prediction);
+      updateHistory(currentPeriod, prediction);
+    }
+  }
+
+  setInterval(mainLoop, 1000);
+  window.onload = mainLoop;
+</script>
+</body>
+</html>
