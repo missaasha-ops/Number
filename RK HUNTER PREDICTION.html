@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>❤️‍🩹 RK HUNTER PREDICTION ❤️‍🩹</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #0c0c0c;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+    }
+
+    .header {
+      text-align: center;
+      font-size: 1.8rem;
+      font-weight: 700;
+      padding: 14px 0;
+      margin-bottom: 10px;
+      background: linear-gradient(90deg, #00e6ff, #ffbb00, #00e6ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 12px rgba(0, 255, 255, 0.6), 0 0 22px rgba(255, 230, 0, 0.5);
+      letter-spacing: 1px;
+      animation: glowPulse 2.5s infinite alternate;
+    }
+
+    @keyframes glowPulse {
+      from { text-shadow: 0 0 8px rgba(0,255,255,0.5), 0 0 15px rgba(255,230,0,0.4); }
+      to { text-shadow: 0 0 18px rgba(0,255,255,0.9), 0 0 35px rgba(255,230,0,0.8); }
+    }
+
+    .stats {
+      text-align: center;
+      margin: 5px 0 15px;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .stats span {
+      margin: 0 10px;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .stats .win { background: rgba(0,255,0,0.15); color: #00ff66; }
+    .stats .loss { background: rgba(255,0,0,0.15); color: #ff4444; }
+    .stats .jackpot { background: rgba(255,215,0,0.2); color: #ffd700; }
+
+    table {
+      width: 98%;
+      max-width: 980px;
+      margin: 10px auto;
+      border-collapse: collapse;
+      background: #111;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 10px #000;
+    }
+
+    th, td {
+      padding: 8px 10px;
+      text-align: center;
+      border-bottom: 1px solid #333;
+    }
+
+    th {
+      background: #1a1a1a;
+      font-weight: 700;
+      color: #00e6ff;
+    }
+
+    tr.jackpot {
+      background: linear-gradient(90deg, #00ff99, #00ffcc);
+      color: #000;
+      font-weight: 700;
+    }
+
+    tr.win { background: rgba(0, 255, 0, 0.15); }
+    tr.loss { background: rgba(255, 0, 0, 0.15); }
+
+    .tab-buttons {
+      display: flex;
+      justify-content: center;
+      margin: 10px 0;
+      gap: 6px;
+    }
+
+    .tab-buttons button {
+      background: #111;
+      border: 1px solid #444;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .tab-buttons button.active {
+      background: #00e6ff;
+      color: #000;
+    }
+
+    #clearHistoryBtn {
+      background: #111;
+      border: 1px solid #ff4444;
+      color: #ff4444;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: 0.3s;
+    }
+
+    #clearHistoryBtn:hover {
+      background: #ff4444;
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">❤️‍🩹 RK HUNTER PREDICTION ❤️‍🩹</div>
+
+  <div class="stats">
+    <span class="win">Win: <span id="winCount">0</span></span>
+    <span class="loss">Loss: <span id="lossCount">0</span></span>
+    <span class="jackpot">Jackpot: <span id="jackpotCount">0</span></span>
+  </div>
+
+  <div class="tab-buttons" role="tablist">
+    <button id="predTab" class="active">Prediction History</button>
+    <button id="gameTab">Game History</button>
+  </div>
+
+  <div style="max-width:980px;margin:8px auto;text-align:right">
+    <button id="clearHistoryBtn">🗑 Clear Prediction History</button>
+  </div>
+
+  <table id="historyTable">
+    <thead></thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let predictionHistory = JSON.parse(localStorage.getItem('predictionHistory') || '[]');
+    let winCount = 0;
+    let lossCount = 0;
+    let jackpotCount = 0;
+
+    function saveState() {
+      localStorage.setItem('predictionHistory', JSON.stringify(predictionHistory));
+    }
+
+    function updateStats() {
+      winCount = predictionHistory.filter(p => p.status === 'Win').length;
+      lossCount = predictionHistory.filter(p => p.status === 'Loss').length;
+      jackpotCount = predictionHistory.filter(p => p.status === 'JACKPOT').length;
+      document.getElementById('winCount').innerText = winCount;
+      document.getElementById('lossCount').innerText = lossCount;
+      document.getElementById('jackpotCount').innerText = jackpotCount;
+    }
+
+    function renderTable() {
+      const head = document.querySelector('#historyTable thead');
+      const body = document.querySelector('#historyTable tbody');
+      const isPred = true;
+
+      if (isPred) {
+        head.innerHTML = `<tr>
+          <th>Period</th>
+          <th>Big/Small Pred</th>
+          <th>Top Numbers</th>
+          <th>🎨 Color Pred</th>
+          <th>Actual</th>
+          <th>Status</th>
+        </tr>`;
+      }
+
+      body.innerHTML = predictionHistory.map(item => {
+        const nums = (item.numberPreds || ["--", "--", "--"]).join(", ");
+        const colorText = item.colorPred ? item.colorPred : '--';
+        const actualText = item.actualNum ? `${item.actualNum} (${item.actual})` : '--';
+        const cls = item.status === 'JACKPOT' ? 'jackpot' : item.status === 'Win' ? 'win' : item.status === 'Loss' ? 'loss' : '';
+        return `<tr class="${cls}">
+          <td>${item.period}</td>
+          <td>${item.prediction}</td>
+          <td>${nums}</td>
+          <td>${colorText}</td>
+          <td>${actualText}</td>
+          <td>${item.status || 'Waiting'}</td>
+        </tr>`;
+      }).join('');
+
+      updateStats();
+    }
+
+    document.getElementById('clearHistoryBtn').addEventListener('click', ()=>{
+      if (confirm('Are you sure you want to clear all Prediction History?')) {
+        predictionHistory = [];
+        winCount = 0;
+        lossCount = 0;
+        jackpotCount = 0;
+        saveState();
+        renderTable();
+        alert('✅ Prediction History cleared successfully!');
+      }
+    });
+
+    renderTable();
+  </script>
+</body>
+</html>
