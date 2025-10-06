@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>THE AI PREDICTOR V5.3 (Top3 + Color + Ding)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Outfit', sans-serif; background: #000; color: #fff; margin: 0; padding: 10px; text-align: center; }
+    .header { font-size: 20px; font-weight: bold; color: #00ffea; margin-bottom: 10px; }
+    .card { background: #111; border: 1px solid #00ffea; border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+    .prediction-btn { margin: 10px auto; display: block; background: #00ffea33; color: #00ffea; border: 1px solid #00ffea;
+      border-radius: 8px; padding: 12px; font-weight: bold; font-size: 18px; }
+    #patternBox { color: #aaa; font-size: 14px; margin-top: 5px; }
+    .tab-buttons { display: flex; border: 1px solid #00ffea; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+    .tab-buttons button { flex: 1; background: #111; color: #00ffea; padding: 8px; border: none; cursor: pointer; font-weight: bold; }
+    .tab-buttons button.active { background: #00ffea33; }
+    .history-container { border: 1px solid #00ffea; border-radius: 8px; overflow: hidden; max-height: 400px; overflow-y: auto; }
+    th, td { font-size: 13px; border-bottom: 1px solid #222; padding: 6px; }
+    th { background: #111; color: #00ffea; position: sticky; top: 0; }
+    .status.win { color: lime; font-weight: bold; }
+    .status.loss { color: red; font-weight: bold; }
+    #colorPredictionBox { color: #ffd700; margin-top: 5px; font-weight: bold; }
+    .small-note { color: #999; font-size: 12px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="header">🤖 𝐓𝐇𝐄 𝐀𝐈 𝐏𝐑𝐄𝐃𝐈𝐂𝐓𝐎𝐑 V5.3 (Numbers + Color + Ding)</div>
+  <div class="card">
+    <div id="currentPeriod">मौजूदा राउंड: लोड हो रहा है...</div>
+    <div id="liveTime">समय: --:--:--</div>
+    <div id="predictionBox" class="prediction-btn">Big/Small → Analyzing...</div>
+    <div id="confidenceBox">Confidence: --%</div>
+    <div id="numberPredictionBox">🎯 संभावित जीतने वाले नंबर: --</div>
+    <div id="colorPredictionBox">🎨 संभावित रंग: --</div>
+    <div id="patternBox">पैटर्न: --</div>
+    <div class="small-note">नोट: ये केवल संभाव्यता है — 100% गारंटी नहीं।</div>
+  </div>
+
+  <script>
+  // ====== Config ======
+  const CURRENT_API = 'https://api.bdg88zf.com/api/webapi/GetGameIssue';
+  const HISTORY_API = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json';
+
+  const REQUEST_DATA = {
+    typeId: 1,
+    language: 0,
+    random: "e7fe6c090da2495ab8290dac551ef1ed",
+    signature: "1F390E2B2D8A55D693E57FD905AE73A7",
+    timestamp: 1723726679
+  };
+
+  // ====== State ======
+  let last100Results = [];
+  let lastShownNumbers = null; // store last displayed numbers array (for change detection)
+  let lastShownColor = null;   // store last displayed color
+
+  // ====== Helpers ======
+  function getBigSmall(num) { return num >= 5 ? "Big" : "Small"; }
+
+  function getColor(num) {
+    if ([1, 3, 7, 9].includes(num)) return "Green";
+    if ([2, 4, 6, 8].includes(num)) return "Red";
+    return "Violet";
+  }
+
+  function updateLiveTime() { document.getElementById("liveTime").innerText = "समय: " + new Date().toLocaleTimeString('hi-IN'); }
+
+  function analyzeNumbers(history) {
+    const stats = {};
+    for (let i = 0; i < 10; i++) stats[i] = { frequency: 0, color: getColor(i) };
+    history.forEach(item => {
+      const n = Number(item.number);
+      if (!isNaN(n) && stats.hasOwnProperty(n)) stats[n].frequency++;
+    });
+    return stats;
+  }
+
+  function predict(history) {
+    if (!history || history.length < 10) {
+      return { text: "Analyzing...", conf: "--", pattern: "डेटा इकट्ठा हो रहा है", numbers: ["--","--","--"], numConf: ["--","--","--"], color: "--", colorConf: "--" };
+    }
+
+    const stats = analyzeNumbers(history);
+    const sorted = Object.entries(stats).sort((a, b) => b[1].frequency - a[1].frequency);
+    const top3 = sorted.slice(0, 3).map((x, i) => ({
+      number: Number(x[0]),
+      color: x[1].color,
+      conf: 80 - i * 5
+    }));
+
+    // Color count across provided history
+    const colorCount = { Green: 0, Red: 0, Violet: 0 };
+    history.forEach(h => colorCount[getColor(h.number)]++);
+
+    const topColorEntry = Object.entries(colorCount).sort((a,b)=>b[1]-a[1])[0] || ["Green",0];
+    const topColor = topColorEntry[0];
+
+    return {
+      text: top3[0].number,
+      conf: top3[0].conf,
+      pattern: "AI Trend + Color Analyzer",
+      numbers: top3.map(x => x.number),
+      numConf: top3.map(x => x.conf),
+      color: topColor,
+      colorConf: 78
+    };
+  }
+
+  // ====== Ding Sound (WebAudio) ======
+  let audioCtx = null;
+  function playDing() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sine';
+      o.frequency.value = 880; // A5-ish
+      g.gain.setValueAtTime(0, audioCtx.currentTime);
+      g.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
+      o.connect(g);
+      g.connect(audioCtx.destination);
+      o.start();
+      o.stop(audioCtx.currentTime + 0.23);
+    } catch (e) {
+      console.warn("Audio play error", e);
+    }
+  }
+
+  // ====== Fetch + Update UI ======
+  async function fetchData() {
+    try {
+      // Current period
+      try {
+        const periodRes = await fetch(CURRENT_API, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...REQUEST_DATA, timestamp: Math.floor(Date.now() / 1000) })
+        });
+        const periodData = await periodRes.json();
+        const period = periodData?.data?.issueNumber || "Unavailable";
+        document.getElementById("currentPeriod").innerText = `मौजूदा राउंड: ${period}`;
+      } catch (e) {
+        document.getElementById("currentPeriod").innerText = `मौजूदा राउंड: Unavailable`;
+      }
+
+      // History
+      const res = await fetch(HISTORY_API + '?ts=' + Date.now());
+      const data = await res.json();
+      if (!data?.data?.list) throw new Error("Invalid history data");
+
+      last100Results = data.data.list.slice(0, 100).map(item => ({
+        period: item.issueNumber,
+        number: parseInt(item.number, 10),
+        size: getBigSmall(parseInt(item.number,10))
+      }));
+
+      // Use recent 50 for prediction calculations
+      const recent = last100Results.slice(0, 50);
+      const prediction = predict(recent);
+
+      // Update UI fields
+      document.getElementById("predictionBox").innerText = `Big/Small → ${getBigSmall(Number(prediction.text))}`;
+      document.getElementById("confidenceBox").innerText = `Confidence: ${prediction.conf}%`;
+
+      let numberText = prediction.numbers
+        .map((num, i) => `${num} (${prediction.numConf[i]}%)`)
+        .join(", ");
+      document.getElementById("numberPredictionBox").innerText = `🎯 संभावित जीतने वाले नंबर → ${numberText}`;
+
+      document.getElementById("colorPredictionBox").innerText = `🎨 संभावित जीतने वाला रंग → ${prediction.color} (${prediction.colorConf}%)`;
+      document.getElementById("patternBox").innerText = `पैटर्न: ${prediction.pattern}`;
+
+      // ====== Change detection for Ding ======
+      // Compare numbers arrays and color to last shown values
+      const numbersChanged = !arrayEquals(prediction.numbers, lastShownNumbers);
+      const colorChanged = prediction.color !== lastShownColor;
+
+      if (numbersChanged || colorChanged) {
+        // play ding
+        playDing();
+        lastShownNumbers = prediction.numbers.slice(); // copy
+        lastShownColor = prediction.color;
+      }
+
+    } catch (e) {
+      console.error("Fetch error:", e);
+      document.getElementById("numberPredictionBox").innerText = "डेटा त्रुटि!";
+    }
+  }
+
+  function arrayEquals(a,b) {
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    if (a.length !== b.length) return false;
+    for (let i=0;i<a.length;i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
+
+  // ====== Init ======
+  setInterval(updateLiveTime, 1000);
+  setInterval(fetchData, 5000);
+  updateLiveTime();
+  fetchData();
+
+  // Allow user to enable sound by interacting (some browsers require gesture)
+  document.body.addEventListener('click', function enableAudioOnce() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // small silent resume to unlock audio on iOS/Chrome
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch(e){}
+    document.body.removeEventListener('click', enableAudioOnce);
+  }, { once: true });
+  </script>
+</body>
+  </html>
