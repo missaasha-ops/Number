@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>AI PREDICTOR — Final (JACKPOT)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --accent:#00ffea;
+      --bg:#000;
+      --card:#111;
+      --muted:#999;
+      --gold:#ffd700;
+      --green:#7CFC00;
+      --red:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    body{font-family:'Outfit',sans-serif;background:var(--bg);color:#fff;margin:0;padding:14px;display:flex;align-items:flex-start;flex-direction:column;gap:12px;justify-content:flex-start}
+    .header{font-size:20px;font-weight:700;color:var(--accent);text-align:center}
+    .card{background:var(--card);border:1px solid var(--accent);border-radius:10px;padding:12px;max-width:980px;margin:0 auto;display:flex;gap:12px;flex-wrap:wrap}
+    .left,.right{width:100%;max-width:480px}
+    @media(min-width:980px){ .left,.right{width:48%} }
+    .prediction-btn{display:block;background:rgba(0,255,234,0.12);color:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:12px;font-weight:700;font-size:18px;text-align:center}
+    #numberPredictionBox,#colorPredictionBox{font-weight:700;margin-bottom:6px}
+    #patternBox{color:#aaa;font-size:13px;margin-top:6px}
+    .small-note{color:var(--muted);font-size:12px;margin-top:6px}
+    .tab-buttons{display:flex;border:1px solid var(--accent);border-radius:8px;overflow:hidden;max-width:980px;margin:0 auto}
+    .tab-buttons button{flex:1;background:var(--card);color:var(--accent);padding:10px;border:0;cursor:pointer;font-weight:700}
+    .tab-buttons button.active{background:rgba(0,255,234,0.12)}
+    .history-container{border:1px solid var(--accent);border-radius:8px;overflow:hidden;max-height:420px;overflow-y:auto;max-width:980px;margin:0 auto;background:#070707}
+    table{width:100%;border-collapse:collapse}
+    thead th{position:sticky;top:0;background:#070707;color:var(--accent);padding:8px;font-size:13px}
+    th,td{padding:8px;text-align:center;border-bottom:1px solid #1a1a1a;font-size:13px}
+    .status.Win{color:var(--green);font-weight:700}
+    .status.Loss{color:var(--red);font-weight:700}
+    .status.Waiting{color:#ffd54f;font-weight:700}
+    .status.JACKPOT{color:var(--green);font-weight:900;text-shadow:0 0 10px rgba(124,252,0,0.9)}
+    /* glow animation for JACKPOT rows */
+    @keyframes jackpotGlow {
+      0%{box-shadow:0 0 0 rgba(124,252,0,0)}
+      50%{box-shadow:0 0 16px rgba(124,252,0,0.6)}
+      100%{box-shadow:0 0 0 rgba(124,252,0,0)}
+    }
+    .jackpot-row{animation:jackpotGlow 1.6s ease-in-out infinite}
+    .top-note{max-width:980px;margin:0 auto;color:var(--muted);font-size:13px}
+    .container{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  </style>
+</head>
+<body>
+  <div class="header">🤖 AI PREDICTOR — Final (JACKPOT Enabled)</div>
+
+  <div class="card container">
+    <div class="left">
+      <div id="currentPeriod">मौजूदा राउंड: लोड हो रहा है...</div>
+      <div id="liveTime">समय: --:--:--</div>
+      <div id="predictionBox" class="prediction-btn">Big/Small → Analyzing...</div>
+      <div id="confidenceBox" style="margin-top:8px">Confidence: --%</div>
+      <div id="patternBox">पैटर्न: --</div>
+      <div class="small-note">नोट: ये संभाव्यता है — 100% गारंटी नहीं।</div>
+    </div>
+
+    <div class="right">
+      <div id="numberPredictionBox">🎯 संभावित जीतने वाले नंबर: --</div>
+      <div id="colorPredictionBox">🎨 संभावित रंग: --</div>
+      <div style="margin-top:8px;color:#aaa;font-size:13px;text-align:left;">
+        <div><strong>कैसे:</strong> पिछली ड्रॉज़ से hot/cold और color frequency निकाला जाता है। Top-1 नंबर सही होने पर उसे <strong>JACKPOT</strong> माना जाएगा।</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-buttons" role="tablist" aria-label="Tabs">
+    <button id="predTab" class="active">Prediction History</button>
+    <button id="gameTab">Game History</button>
+  </div>
+
+  <div class="history-container">
+    <table>
+      <thead id="tableHead"><tr><th>Period</th><th>Big/Small Pred</th><th>Top Numbers (conf)</th><th>Actual</th><th>Status</th></tr></thead>
+      <tbody id="tableBody"><tr><td style="padding:20px">लोड हो रहा है...</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="top-note">चेतावनी: यह टूल सिर्फ़ रिकॉर्ड/एनालिसिस के लिये है — जुआ/लॉटरी पर निर्भरता न रखें।</div>
+
+<script>
+/* ====== Config APIs ====== */
+const CURRENT_API = 'https://api.bdg88zf.com/api/webapi/GetGameIssue';
+const HISTORY_API = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json';
+
+const REQUEST_DATA = {
+  typeId: 1,
+  language: 0,
+  random: "e7fe6c090da2495ab8290dac551ef1ed",
+  signature: "1F390E2B2D8A55D693E57FD905AE73A7",
+  timestamp: 1723726679
+};
+
+/* ====== State ====== */
+let last100Results = [];
+let predictionHistory = [];
+let winCount = 0, lossCount = 0;
+
+let lastShownNumbers = null;
+let lastShownColor = null;
+let currentPrediction = null;
+
+/* ====== Persistence ====== */
+const PH_KEY = 'ai_pred_final_ph';
+const WL_KEY = 'ai_pred_final_wl';
+
+function loadState(){
+  try{
+    const ph = localStorage.getItem(PH_KEY);
+    const wl = localStorage.getItem(WL_KEY);
+    if(ph) predictionHistory = JSON.parse(ph);
+    if(wl){
+      const obj = JSON.parse(wl);
+      winCount = obj.win||0; lossCount = obj.loss||0;
+    }
+  }catch(e){ console.warn("LoadStateErr",e); }
+}
+function saveState(){
+  try{
+    localStorage.setItem(PH_KEY, JSON.stringify(predictionHistory));
+    localStorage.setItem(WL_KEY, JSON.stringify({win: winCount, loss: lossCount}));
+  }catch(e){ console.warn("SaveStateErr",e); }
+}
+
+/* ====== Helpers ====== */
+function getBigSmall(n){ return Number(n) >= 5 ? "Big" : "Small"; }
+function getColor(n){
+  n = Number(n);
+  if([1,3,7,9].includes(n)) return "Green";
+  if([2,4,6,8].includes(n)) return "Red";
+  return "Violet";
+}
+function updateLiveTime(){ document.getElementById("liveTime").innerText = "समय: " + new Date().toLocaleTimeString('hi-IN'); }
+
+/* Analyze numbers: frequency + last seen index */
+function analyzeNumbers(history){
+  const stats = {};
+  for(let i=0;i<10;i++) stats[i] = { frequency:0, lastSeen:null, color: getColor(i) };
+  for(let i=0;i<history.length;i++){
+    const n = Number(history[i].number);
+    if(stats.hasOwnProperty(n)){
+      stats[n].frequency++;
+      if(stats[n].lastSeen === null) stats[n].lastSeen = i;
+    }
+  }
+  // mark unseen
+  for(let i=0;i<10;i++) if(stats[i].lastSeen === null) stats[i].lastSeen = history.length;
+  return stats;
+}
+
+/* Prediction: top3 numbers + color + big/small */
+function predict(history){
+  if(!history || history.length < 5){
+    return {
+      bigsmall: "--", conf: "--", pattern: "डेटा कम है",
+      numbers: ["--","--","--"], numConf: ["--","--","--"],
+      color: "--", colorConf: "--"
+    };
+  }
+
+  // Big/Small simple contrarian/trend
+  const counts = history.slice(0,20).reduce((acc,h)=>{
+    const s = getBigSmall(h.number); acc[s] = (acc[s]||0) + 1; return acc;
+  }, {});
+  const baseBS = (counts.Big||0) > (counts.Small||0) ? "Small" : "Big";
+  const bsConf = 70;
+
+  const stats = analyzeNumbers(last100Results.length ? last100Results : history);
+  const sorted = Object.entries(stats).sort((a,b)=>{
+    if(b[1].frequency !== a[1].frequency) return b[1].frequency - a[1].frequency;
+    return a[1].lastSeen - b[1].lastSeen;
+  });
+
+  const totalFreq = Object.values(stats).reduce((s,x)=>s + x.frequency, 0) || 1;
+  const top3 = sorted.slice(0,3).map((entry,idx)=>{
+    const num = Number(entry[0]);
+    const freq = entry[1].frequency;
+    const freqScore = Math.round((freq/totalFreq)*100);
+    const base = 80 - idx*5;
+    const conf = Math.min(95, Math.max(30, Math.round(base + freqScore*0.12)));
+    return { number: num, conf, color: entry[1].color };
+  });
+
+  // color frequency
+  const colorCount = { Green:0, Red:0, Violet:0 };
+  (last100Results.length ? last100Results : history).forEach(h => colorCount[getColor(h.number)]++);
+  const topColorEntry = Object.entries(colorCount).sort((a,b)=>b[1]-a[1])[0] || ["Green",0];
+  const topColor = topColorEntry[0];
+  const colorConf = Math.min(95, 50 + Math.round((topColorEntry[1] / (history.length||1))*50));
+
+  return {
+    bigsmall: baseBS, conf: bsConf, pattern: "AI Hot-Trend + Color",
+    numbers: top3.map(t=>t.number), numConf: top3.map(t=>t.conf),
+    color: topColor, colorConf
+  };
+}
+
+/* ====== Audio: soft ding & jackpot sound ====== */
+let audioCtx = null;
+function ensureAudio(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+}
+function playDingSoft(){
+  try{
+    ensureAudio();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.value = 880;
+    g.gain.setValueAtTime(0, audioCtx.currentTime);
+    g.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.20);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 0.20);
+  }catch(e){ console.warn("Audio err",e); }
+}
+function playJackpotSound(){
+  try{
+    ensureAudio();
+    // two-tone ascending short melody
+    const now = audioCtx.currentTime;
+    const o1 = audioCtx.createOscillator();
+    const g1 = audioCtx.createGain();
+    o1.type='sine'; o1.frequency.value = 660;
+    g1.gain.setValueAtTime(0, now);
+    g1.gain.linearRampToValueAtTime(0.12, now + 0.01);
+    g1.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+    o1.connect(g1); g1.connect(audioCtx.destination);
+    o1.start(); o1.stop(now + 0.22);
+
+    const o2 = audioCtx.createOscillator();
+    const g2 = audioCtx.createGain();
+    o2.type='sine'; o2.frequency.value = 990;
+    g2.gain.setValueAtTime(0, now + 0.06);
+    g2.gain.linearRampToValueAtTime(0.10, now + 0.07);
+    g2.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+    o2.connect(g2); g2.connect(audioCtx.destination);
+    o2.start(now + 0.06); o2.stop(now + 0.32);
+  }catch(e){ console.warn("Jackpot audio err",e); }
+}
+
+/* ====== Render table ====== */
+function renderTable(){
+  const head = document.getElementById('tableHead');
+  const body = document.getElementById('tableBody');
+  const isPred = document.getElementById('predTab').classList.contains('active');
+
+  if(isPred){
+    head.innerHTML = `<tr><th>Period</th><th>Big/Small Pred</th><th>Top Numbers (conf)</th><th>Actual</th><th>Status</th></tr>`;
+    if(!predictionHistory.length){
+      body.innerHTML = `<tr><td colspan="5" style="padding:18px">कोई predictions नहीं</td></tr>`;
+      return;
+    }
+    body.innerHTML = predictionHistory.map(item=>{
+      const nums = (item.numberPreds||["--","--","--"]).map((n,i)=> `${n} (${(item.numConfs||[])[i]??'--'}%)`).join(", ");
+      const actualText = item.actualNum ? `${item.actualNum} (${item.actual})` : '--';
+      const status = item.status || 'Waiting';
+      const cls = status === 'JACKPOT' ? 'JACKPOT' : (status === 'Win' ? 'Win' : (status==='Loss'?'Loss':'Waiting'));
+      const jackpotRowClass = status==='JACKPOT' ? 'jackpot-row' : '';
+      return `<tr class="${jackpotRowClass}"><td>${item.period}</td><td>${item.prediction}</td><td>${nums}</td><td>${actualText}</td><td class="status ${cls}">${status}</td></tr>`;
+    }).join('');
+  } else {
+    head.innerHTML = `<tr><th>Period</th><th>Number</th><th>Big/Small</th><th>Color</th></tr>`;
+    if(!last100Results.length){
+      body.innerHTML = `<tr><td colspan="4" style="padding:18px">कोई इतिहास उपलब्ध नहीं</td></tr>`;
+      return;
+    }
+    body.innerHTML = last100Results.slice(0,50).map(r=>{
+      return `<tr><td>${r.period}</td><td>${r.number}</td><td>${r.size}</td><td>${getColor(r.number)}</td></tr>`;
+    }).join('');
+  }
+}
+
+/* Resolve predictions with actuals and set statuses (Win/Loss/JACKPOT) */
+function resolvePredictions(){
+  predictionHistory.forEach(ph=>{
+    if(!ph.resolved){
+      const match = last100Results.find(r => r.period === ph.period);
+      if(match){
+        ph.actualNum = match.number;
+        ph.actual = match.size;
+        // Check number jackpot: top-1 predicted number
+        const top1 = (ph.numberPreds && ph.numberPreds.length) ? Number(ph.numberPreds[0]) : null;
+        if(top1 !== null && match.number === top1){
+          ph.status = 'JACKPOT';
+          ph.resolved = true;
+          playJackpotSound();
+        } else {
+          // Big/Small win?
+          ph.status = (ph.prediction === match.size) ? 'Win' : 'Loss';
+          ph.resolved = true;
+          // update counters
+          if(ph.status === 'Win') { winCount++; } else { lossCount++; }
+          // small ding for normal win
+          if(ph.status === 'Win') playDingSoft();
+        }
+        // when JACKPOT, also increment winCount (optional)
+        if(ph.status === 'JACKPOT') { winCount++; }
+      }
+    }
+  });
+  saveState();
+}
+
+/* main fetch & update UI */
+async function fetchData(){
+  try{
+    // current period
+    try{
+      const pRes = await fetch(CURRENT_API, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({...REQUEST_DATA, timestamp: Math.floor(Date.now()/1000)})
+      });
+      const pData = await pRes.json();
+      const period = pData?.data?.issueNumber || 'Unavailable';
+      document.getElementById('currentPeriod').innerText = `मौजूदा राउंड: ${period}`;
+    }catch(e){
+      document.getElementById('currentPeriod').innerText = `मौजूदा राउंड: Unavailable`;
+    }
+
+    // history
+    const res = await fetch(HISTORY_API + '?ts=' + Date.now());
+    const data = await res.json();
+    if(!data?.data?.list) throw new Error('Invalid history');
+    last100Results = data.data.list.slice(0,100).map(item=>({
+      period: item.issueNumber,
+      number: parseInt(item.number,10),
+      size: getBigSmall(item.number)
+    }));
+
+    // compute prediction (use recent 50)
+    const recent = last100Results.slice(0,50);
+    const pred = predict(recent);
+    currentPrediction = pred;
+
+    // update top UI
+    document.getElementById('predictionBox').innerText = `Big/Small → ${pred.bigsmall}`;
+    document.getElementById('confidenceBox').innerText = `Confidence: ${pred.conf}%`;
+    document.getElementById('patternBox').innerText = `पैटर्न: ${pred.pattern}`;
+
+    const numText = pred.numbers.map((n,i)=> `${n} (${pred.numConf[i]}%)`).join(', ');
+    document.getElementById('numberPredictionBox').innerText = `🎯 संभावित जीतने वाले नंबर → ${numText}`;
+    document.getElementById('colorPredictionBox').innerText = `🎨 संभावित रंग → ${pred.color} (${pred.colorConf}%)`;
+
+    // record prediction for current period if not already present
+    const currPeriodText = document.getElementById('currentPeriod').innerText;
+    const currentPeriod = currPeriodText.split(':')[1]?.trim() || null;
+    if(currentPeriod && currentPeriod !== 'Unavailable'){
+      if(!predictionHistory.find(p=>p.period === currentPeriod)){
+        predictionHistory.unshift({
+          period: currentPeriod,
+          prediction: pred.bigsmall,
+          numberPreds: pred.numbers,
+          numConfs: pred.numConf,
+          actual: null,
+          actualNum: null,
+          status: 'Waiting',
+          resolved: false
+        });
+        if(predictionHistory.length > 300) predictionHistory.pop();
+      }
+    }
+
+    // resolve predictions (update statuses)
+    resolvePredictions();
+
+    // save & render
+    saveState();
+
+    // play ding when prediction numbers or color changes
+    const numbersChanged = !arrayEquals(pred.numbers, lastShownNumbers);
+    const colorChanged = pred.color !== lastShownColor;
+    if(numbersChanged || colorChanged){
+      // soft ding
+      playDingSoft();
+      lastShownNumbers = pred.numbers ? pred.numbers.slice() : null;
+      lastShownColor = pred.color;
+    }
+
+    updateWinRateDOM();
+    renderTable();
+
+  }catch(err){
+    console.error('Fetch error',err);
+    document.getElementById('numberPredictionBox').innerText = 'डेटा त्रुटि!';
+  }
+}
+
+/* helper */
+function arrayEquals(a,b){
+  if(!a && !b) return true;
+  if(!a || !b) return false;
+  if(a.length !== b.length) return false;
+  for(let i=0;i<a.length;i++) if(a[i] !== b[i]) return false;
+  return true;
+}
+
+/* update win rate inside pattern box */
+function updateWinRateDOM(){
+  const total = winCount + lossCount;
+  const wr = total > 0 ? Math.round((winCount/total)*100) : 0;
+  const p = document.getElementById('patternBox');
+  if(p){
+    const base = currentPrediction?.pattern || '--';
+    p.innerText = `पैटर्न: ${base} • WinRate: ${wr}% (${winCount}W/${lossCount}L)`;
+  }
+}
+
+/* Tabs wiring */
+document.querySelectorAll('.tab-buttons button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-buttons button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTable();
+  });
+});
+
+/* Init */
+loadState();
+updateLiveTime();
+setInterval(updateLiveTime,1000);
+setInterval(fetchData,7000);
+fetchData();
+
+// unlock audio on first user gesture
+document.body.addEventListener('click', function unlock(){
+  try{ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state === 'suspended') audioCtx.resume(); }catch(e){}
+  document.body.removeEventListener('click', unlock);
+}, { once:true });
+
+</script>
+</body>
+</html>
