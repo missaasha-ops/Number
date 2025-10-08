@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>FUSIGURO - AI Prediction</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+  <style>
+   body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0f0f0f, #1e1e1e);
+      color: #f0f0f0;
+      padding-bottom: 80px;
+    }
+    .header {
+      text-align: center;
+      padding: 30px 0;
+      background: #111;
+      font-size: 32px;
+      font-weight: bold;
+      color: #00ffcc;
+      animation: glow 1.5s infinite alternate;
+    }
+    @keyframes glow {
+      from { text-shadow: 0 0 10px #00ffcc; }
+      to { text-shadow: 0 0 20px #00ffcc, 0 0 30px #00ffcc; }
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+    .prediction-box {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .prediction-box h2 {
+      font-size: 24px;
+      color: #00ffcc;
+    }
+    .prediction-box p {
+      font-size: 36px;
+      font-weight: bold;
+      color: gold;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #222;
+    }
+    th, td {
+      border: 1px solid #444;
+      padding: 10px;
+      text-align: center;
+    }
+    th { background-color: #333; color: #00ffcc; }
+    .win { background-color: rgba(0, 255, 0, 0.1); }
+    .loss { background-color: rgba(255, 0, 0, 0.1); }
+
+    /* FAB */
+    .fab {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      background-color: #0088cc;
+      border-radius: 50%;
+      color: white;
+      text-align: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 28px;
+      text-decoration: none;
+      transition: transform 0.3s ease;
+      z-index: 1000;
+    }
+    .fab:hover { transform: scale(1.1); }
+  </style>
+ </head>
+ <body>
+  <div class="header">FUSIGURO</div>
+  <div class="container">
+   <div class="prediction-box">
+    <h2>AI Prediction</h2>
+    <p id="prediction">Next Prediction: --</p>
+   </div>
+
+   <h3>Recent Results</h3>
+   <table>
+    <thead>
+     <tr><th>Period</th><th>Number</th><th>Result</th></tr>
+    </thead>
+    <tbody id="resultsBody"></tbody>
+   </table>
+
+   <h3 style="margin-top:30px;">Prediction History</h3>
+   <table>
+    <thead>
+     <tr><th>Period</th><th>Predicted</th><th>Actual</th><th>Status</th></tr>
+    </thead>
+    <tbody id="historyBody"></tbody>
+   </table>
+  </div>
+
+  <a class="fab" href="https://t.me/+80gY--B_r545ZDY9" target="_blank">
+    <i class="fab fa-telegram-plane"></i>
+  </a>
+
+  <script>
+   const API_URL = "https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json";
+   let lastPeriod = null;
+   let lastPrediction = null;
+   const predictionHistory = [];
+
+   async function fetchResults() {
+     try {
+       const response = await fetch(API_URL);
+       const data = await response.json();
+       const results = data?.data?.list?.slice(0, 50);
+
+       if (!results || results.length === 0) return;
+
+       const currentPeriod = results[0].issueNumber;
+       renderResults(results);
+
+       if (lastPeriod !== currentPeriod) {
+         if (lastPrediction) {
+           const actualNum = parseInt(results[0].number);
+           const status = lastPrediction.topTwo.includes(actualNum.toString()) ? 'WIN' : 'LOSS';
+           predictionHistory.unshift({
+             period: currentPeriod,
+             predicted: lastPrediction.topTwo.join(', '),
+             actual: actualNum,
+             status: status
+           });
+           updateHistory();
+         }
+
+         lastPeriod = currentPeriod;
+         lastPrediction = simpleNumberPrediction(results);
+       }
+     } catch (e) {
+       console.error("API Error:", e);
+       document.getElementById('prediction').textContent = 'Error fetching data';
+     }
+   }
+
+   function renderResults(results) {
+     const tbody = document.getElementById('resultsBody');
+     tbody.innerHTML = '';
+     results.forEach(item => {
+       const num = parseInt(item.number);
+       const result = num >= 5 ? 'BIG' : 'SMALL';
+       const row = `<tr><td>${item.issueNumber}</td><td>${num}</td><td>${result}</td></tr>`;
+       tbody.innerHTML += row;
+     });
+   }
+
+   function updateHistory() {
+     const tbody = document.getElementById('historyBody');
+     tbody.innerHTML = '';
+     predictionHistory.slice(0, 20).forEach(entry => {
+       const row = `<tr class="${entry.status === 'WIN' ? 'win' : 'loss'}">
+         <td>${entry.period}</td>
+         <td>${entry.predicted}</td>
+         <td>${entry.actual}</td>
+         <td><strong>${entry.status}</strong></td>
+       </tr>`;
+       tbody.innerHTML += row;
+     });
+   }
+
+   // simple number prediction only
+   function simpleNumberPrediction(results) {
+     const numbers = results.map(r => parseInt(r.number));
+     const freq = {};
+     numbers.forEach(n => freq[n] = (freq[n] || 0) + 1);
+     const topTwo = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 2).map(e => e[0]);
+
+     const el = document.getElementById('prediction');
+     el.textContent = `Next Prediction: ${topTwo.join(', ')}`;
+     return { topTwo };
+   }
+
+   fetchResults();
+   setInterval(fetchResults, 5000);
+  </script>
+ </body>
+</html>
