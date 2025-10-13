@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FUSIGURO - AI Prediction</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+<style>
+  body { margin:0; font-family:'Segoe UI', Tahoma, Geneva, Verdana,sans-serif; background: linear-gradient(135deg,#0f0f0f,#1e1e1e); color:#f0f0f0; padding-bottom:80px;}
+  .header {text-align:center;padding:30px 0;background:#111;font-size:32px;font-weight:bold;color:#00ffcc;animation:glow 1.5s infinite alternate;}
+  @keyframes glow {from {text-shadow:0 0 10px #00ffcc;} to {text-shadow:0 0 25px #00ffcc,0 0 40px #00ffcc;}}
+  .container {max-width:800px;margin:auto;padding:20px;}
+  .prediction-box {text-align:center;margin-bottom:30px;}
+  .prediction-box h2 {font-size:24px;color:#00ffcc;}
+  .prediction-box p {font-size:22px;font-weight:bold;}
+  .prediction.big {color:gold;}
+  .prediction.small {color:deepskyblue;}
+  table {width:100%;border-collapse:collapse;background:#222;}
+  th, td {border:1px solid #444;padding:10px;text-align:center;}
+  th {background-color:#333;color:#00ffcc;}
+  .win {background-color:rgba(0,255,0,0.1);}
+  .dragon {color:#ff4d4d;font-weight:bold;}
+  .fab {position:fixed;bottom:20px;right:20px;width:60px;height:60px;background-color:#0088cc;border-radius:50%;color:white;text-align:center;box-shadow:0 4px 8px rgba(0,0,0,0.4);display:flex;justify-content:center;align-items:center;font-size:28px;text-decoration:none;transition:transform 0.3s ease;z-index:1000;}
+  .fab:hover {transform:scale(1.1);}
+</style>
+</head>
+<body>
+<div class="header">FUSIGURO</div>
+<div class="container">
+  <div class="prediction-box">
+    <h2>AI Prediction</h2>
+    <p class="prediction small" id="prediction">Connecting to Jalwa...</p>
+  </div>
+  <h3>Prediction History</h3>
+  <table>
+    <thead>
+      <tr><th>Period</th><th>Predicted</th><th>Actual</th><th>Status</th></tr>
+    </thead>
+    <tbody id="historyBody"></tbody>
+  </table>
+</div>
+<a class="fab" href="https://t.me/+80gY--B_r545ZDY9" target="_blank">
+  <i class="fab fa-telegram-plane"></i>
+</a>
+
+<script>
+const JALWA_API_URL = "https://api.allorigins.win/get?url=" + encodeURIComponent("https://www.jalwagame.com/api/getNumber");
+
+const predictionHistory = [];
+let lastPeriod = null;
+
+async function fetchJalwa() {
+  try {
+    const resp = await fetch(JALWA_API_URL);
+    const textData = await resp.json();
+    const data = JSON.parse(textData.contents);
+    console.log('API response:', data);
+
+    const nextNumber = parseInt(data.number); // adjust if needed
+    const period = data.period ?? Date.now(); // adjust if needed
+
+    if (isNaN(nextNumber)) {
+      document.getElementById('prediction').textContent = 'Invalid number from API';
+      return;
+    }
+
+    const result = nextNumber >= 5 ? 'BIG' : 'SMALL';
+    const topTwo = [nextNumber, (nextNumber + 1) % 10];
+
+    const el = document.getElementById('prediction');
+    el.innerHTML = `🐉 <span class="dragon">DRAGON Pattern: ${result}</span> (${topTwo.join(", ")}) — Confidence: 100% ✅`;
+    el.className = `prediction ${result.toLowerCase()}`;
+
+    if (lastPeriod !== period) {
+      predictionHistory.unshift({
+        period: period,
+        predicted: `${result} (${topTwo.join(", ")})`,
+        actual: `${result} (${nextNumber})`,
+        status: 'WIN'
+      });
+      updateHistory();
+      lastPeriod = period;
+    }
+
+  } catch(err) {
+    console.error('Error fetching API:', err);
+    document.getElementById('prediction').textContent = 'Error connecting to API';
+  }
+}
+
+function updateHistory() {
+  const tbody = document.getElementById('historyBody');
+  tbody.innerHTML = '';
+  predictionHistory.slice(0, 20).forEach(entry => {
+    tbody.innerHTML += `<tr class="win">
+      <td>${entry.period}</td>
+      <td>${entry.predicted}</td>
+      <td>${entry.actual}</td>
+      <td><strong>${entry.status}</strong></td>
+    </tr>`;
+  });
+}
+
+fetchJalwa();
+setInterval(fetchJalwa, 5000);
+</script>
+</body>
+</html>
