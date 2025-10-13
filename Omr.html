@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>THE BDT PREDICTOR V.5 (Jalwa Live Number)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Outfit', sans-serif; background: #000; color: #fff; margin: 0; padding: 10px; text-align: center; }
+    .header { font-size: 20px; font-weight: bold; color: #00ffea; margin-bottom: 10px; }
+    .card { background: #111; border: 1px solid #00ffea; border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+    .prediction-btn { margin: 10px auto; display: block; background: #00ffea33; color: #00ffea; border: 1px solid #00ffea;
+      border-radius: 8px; padding: 12px; font-weight: bold; font-size: 22px; }
+    #patternBox { color: #aaa; font-size: 14px; margin-top: 5px; }
+    .tab-buttons { display: flex; border: 1px solid #00ffea; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+    .tab-buttons button { flex: 1; background: #111; color: #00ffea; padding: 8px; border: none; cursor: pointer; font-weight: bold; }
+    .tab-buttons button.active { background: #00ffea33; }
+    .history-container { border: 1px solid #00ffea; border-radius: 8px; overflow: hidden; max-height: 400px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { font-size: 13px; border-bottom: 1px solid #222; padding: 6px; }
+    th { background: #111; color: #00ffea; position: sticky; top: 0; }
+    .status.win { color: lime; font-weight: bold; }
+    .status.loss { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="header">𝐓𝐇𝐄 𝐀𝐈 𝐏𝐑𝐄𝐃𝐈𝐂𝐓𝐎𝐑 𝐕5.0 — Jalwa Live</div>
+  <div class="card">
+    <div id="currentPeriod">Current Period: Loading...</div>
+    <div id="liveTime">Time: --:--:--</div>
+    <div id="predictionBox" class="prediction-btn">Number → --</div>
+    <div id="confidenceBox">Confidence: --%</div>
+    <div id="patternBox">Pattern: --</div>
+    <div id="winRate" class="win-rate">Win Rate: --%</div>
+  </div>
+
+  <div class="tab-buttons">
+    <button id="predTab" class="active">Prediction History</button>
+    <button id="gameTab">Game History</button>
+  </div>
+
+  <div class="history-container">
+    <table>
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"><tr><td>Loading...</td></tr></tbody>
+    </table>
+  </div>
+
+<script>
+/*
+  Instructions:
+  1) If Jalwa has a JSON API endpoint that returns the number, set JALWA_API_URL to it.
+     e.g. const JALWA_API_URL = 'https://www.jalwagame.com/api/getNumber';
+     If API requires auth header or params, add them in fetchJalwaDirect().
+
+  2) If no API or CORS blocks, the script will attempt to fetch the public page HTML via a public CORS proxy (AllOrigins)
+     and extract the number via regex. This is a fallback and may fail if page structure changes.
+
+  3) For production, consider hosting a small server-side proxy to avoid CORS and parsing fragility.
+*/
+
+const JALWA_PAGE_URL = 'https://www.jalwagame.com/'; // page to try parsing if direct API not available
+const JALWA_API_URL = ''; // <-- If you have a direct API endpoint, put it here (leave empty if unknown)
+
+let predictionHistory = [];
+let last100Results = [];
+let winCount = 0;
+let lossCount = 0;
+
+function updateLiveTime() { document.getElementById("liveTime").innerText = "Time: " + new Date().toLocaleTimeString('en-GB'); }
+
+// Try direct API call (preferred). Customize headers/body here if needed.
+async function fetchJalwaDirect() {
+  if (!JALWA_API_URL) throw new Error('No direct API URL configured');
+  const resp = await fetch(JALWA_API_URL, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      // 'Authorization': 'Bearer <token>' // add if required
+    },
+    credentials: 'omit'
+  });
+  if (!resp.ok) throw new Error('Direct API responded ' + resp.status);
+  const data = await resp.json();
+  // Try to extract number from a few common fields
+  const candidate = data.number ?? data.result ?? data.data?.number ?? data.value;
+  if (candidate === undefined) throw new Error('No number field in API response');
+  return Number(candidate);
+}
+
+// Fallback: fetch page HTML via public CORS proxy and parse number with regex.
+// NOTE: public proxies may be rate-limited or blocked.
+async function fetchJalwaViaProxy() {
+  const proxy = 'https://api.allorigins.win/raw?url='; // public proxy; good for quick tests
+  const url = proxy + encodeURIComponent(JALWA_PAGE_URL);
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('Proxy fetch failed ' + resp.status);
+  const html = await resp.text();
+
+  // Try multiple regex patterns to find a number on the page.
+  // Adjust or add patterns based on the actual Jalwa page structure.
+  const patterns = [
+    /\bNumber\s*[:→\-\s]*\s*(\d{1,3})\b/i,
+    /\bResult\s*[:→\-\s]*\s*(\d{1,3})\b/i,
+    /"number"\s*[:=]\s*(\d{1,3})/i,
+    /data-number=["']?(\d{1,3})["']?/i,
+    /([^\d]|^)(\d{1,3})([^\d]|$)/ // last-resort: any 1-3 digit number
+  ];
+
+  for (const r of patterns) {
+    const m = html.match(r);
+    if (m && m[1]) {
+      return Number(m[1]);
+    } else if (m && m[2]) {
+      return Number(m[2]);
+    }
+  }
+  throw new Error('No number found in page HTML');
+}
+
+// Main fetch logic: try direct API, else fallback to proxy parsing.
+async function fetchLiveNumber() {
+  try {
+    let number;
+    try {
+      number = await fetchJalwaDirect();
+      console.log('Got number via direct API:', number);
+    } catch (e) {
+      console.warn('Direct API failed or not configured:', e.message);
+      // try proxy fallback
+      number = await fetchJalwaViaProxy();
+      console.log('Got number via proxy parse:', number);
+    }
+    if (typeof number === 'number' && !isNaN(number)) {
+      document.getElementById("predictionBox").innerText = `Number → ${number}`;
+      document.getElementById("confidenceBox").innerText = `Confidence: --%`;
+      return number;
+    } else {
+      throw new Error('Invalid number received');
+    }
+  } catch (err) {
+    console.error('Failed to fetch live number:', err);
+    document.getElementById("predictionBox").innerText = "Number → Error";
+  }
+}
+
+// Existing fetchData skeleton (keeps history UI working if those endpoints are reachable)
+const CURRENT_API = 'https://api.bdg88zf.com/api/webapi/GetGameIssue';
+const HISTORY_API = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json';
+const REQUEST_DATA = {
+  typeId: 1, language: 0, random: "e7fe6c090da2495ab8290dac551ef1ed",
+  signature: "1F390E2B2D8A55D693E57FD905AE73A7", timestamp: 1723726679
+};
+
+async function fetchData() {
+  try {
+    // update period if API available (optional)
+    try {
+      const periodRes = await fetch(CURRENT_API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...REQUEST_DATA, timestamp: Math.floor(Date.now() / 1000) })
+      });
+      const periodData = await periodRes.json();
+      const period = periodData?.data?.issueNumber || "Unavailable";
+      document.getElementById("currentPeriod").innerText = `Current Period: ${period}`;
+    } catch (e) {
+      document.getElementById("currentPeriod").innerText = `Current Period: Unavailable`;
+    }
+
+    // update history table if history API works
+    try {
+      const res = await fetch(HISTORY_API + '?ts=' + Date.now());
+      const data = await res.json();
+      last100Results = data.data.list.slice(0, 100).map(item => {
+        const num = parseInt(item.number);
+        return { period: item.issueNumber, number: num, size: num >= 5 ? 'Big' : 'Small', color: ( [1,3,7,9].includes(num) ? 'Green' : ([2,4,6,8].includes(num) ? 'Red' : 'Violet') ) };
+      });
+    } catch (e) {
+      // ignore history errors
+      last100Results = [];
+    }
+
+    // fetch live number from Jalwa (direct or fallback)
+    await fetchLiveNumber();
+
+    renderTable();
+  } catch (e) {
+    console.error('fetchData overall error:', e);
+  }
+}
+
+function renderTable() {
+  const head = document.getElementById("tableHead");
+  const body = document.getElementById("tableBody");
+  head.innerHTML = "<tr><th>Period</th><th>Number</th><th>Big/Small</th><th>Color</th></tr>";
+  body.innerHTML = last100Results.length === 0
+    ? "<tr><td colspan='4'>No history available</td></tr>"
+    : last100Results.slice(0, 10).map(item => `
+      <tr>
+        <td>${item.period}</td>
+        <td>${item.number}</td>
+        <td>${item.size}</td>
+        <td>${item.color}</td>
+      </tr>`).join("");
+}
+
+document.querySelectorAll(".tab-buttons button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-buttons button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    renderTable();
+  });
+});
+
+setInterval(updateLiveTime, 1000);
+setInterval(fetchData, 5000);
+fetchData();
+</script>
+</body>
+</html>
